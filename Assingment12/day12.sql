@@ -1,0 +1,62 @@
+
+ show databases;
+ use dannys_diner;
+ show tables;
+
+ #question 1 
+ select x.customer_id, sum(x.price) from(select sales.customer_id , menu.price from sales
+ join menu on sales.product_id = menu.product_id)as x group by x.customer_id ;
+ 
+ #question 2
+ select customer_id, count(distinct order_date) from sales group by customer_id;
+ 
+ #question 3
+with r_sales as (select customer_id, product_id, order_date, row_number() over 
+( partition by customer_id order by order_date) as rn from sales) select rs.customer_id, 
+m.product_name  from r_sales rs join menu m on rs.product_id = m.product_id where rs.rn = 1;
+
+#question 4
+ select product_id, count(product_id) as total_order from sales group by product_id order by 
+ total_order desc limit 1;
+ 
+ #question 5
+ select x.customer_id, x.product_id from(select customer_id, product_id, count(product_id) 
+ as freq from sales group by customer_id, product_id) as x where freq = (select max(m) 
+ from (select customer_id, product_id, count(product_id) as m from sales group by 
+ customer_id, product_id) as temp where x.customer_id = temp.customer_id);
+ 
+ #question 6
+ with customer_purchases as ( select s.customer_id, s.product_id, s.order_date, m.join_date, row_number() 
+ over (partition by  s.customer_id order by s.order_date) as rn from sales s 
+ join members m on s.customer_id = m.customer_id where s.order_date > m.join_date)
+select customer_id, product_id, order_date from customer_purchases where rn = 1;
+
+#question 7
+select * from (select members.customer_id, join_date, order_date, product_id from
+ members join sales on members.customer_id = sales.customer_id) as x where x.join_date > x.order_date;
+
+#question 8
+  select b.customer_id, count(b.price) as total_items, sum(b.price) as total_amount from
+  (select * from (select members.customer_id, join_date, order_date, sales.product_id, m.price 
+  from members join sales on members.customer_id = sales.customer_id join menu m on sales.product_id = 
+  m.product_id) as x  where x.order_date >= x.join_date) as b group by b.customer_id;
+  
+#question 9
+with points as ( select product_id, product_name, price, case when product_name = 'sushi' 
+then price * 20 else price * 10 end as point from menu) select sales.customer_id, 
+sum(points.point) as total_points from points join sales on points.product_id = 
+sales.product_id group by sales.customer_id ;
+
+#question 10
+
+select b.customer_id, sum(b.new_points) as total_points 
+from(select x.customer_id, x.product_name, x.order_date, x.join_date,
+case when x.order_date between x.join_date and date_add(x.join_date, interval 6 day)
+then price * 20 
+when product_name = 'sushi' then price * 20
+else price * 10
+end as new_points
+from 
+(select m.customer_id, m.join_date, s.order_date, s.product_id, me.product_name, me.price
+from members m join sales s on m.customer_id = s.customer_id join menu me on s.product_id = me.product_id
+) as x where x.order_date >= x.join_date ) as b where order_date < '2021-02-01' group by customer_id ;
